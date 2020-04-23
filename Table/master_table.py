@@ -166,7 +166,7 @@ def build_master_table(dir_in, split_date = False, version = 'rand', rand_rows =
     
     if save == True:
         my_df.to_csv(dir_out + '\\table_{}.csv'.format(text), index=False, sep='|')
-    
+        
     dataset_chl.close()
     dataset_o2.close()
     dataset_no3.close()
