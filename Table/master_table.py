@@ -10,26 +10,28 @@ from os import path
 ##################################################################################################################################3
 ## Parameters ##
 dir_in = r'C:\Users\Rafael\Documents\Local\Mathematical Data Science\Project\Data_WQ'
+split_date = False
 version = 'rand'
 rand_rows = 100
-repeat = False
+repeat_row = False
 year_month = '20180101'
 save = False
 dir_out = r'C:\Users\Rafael\Documents\Local\Mathematical Data Science\Project\Data_WQ'
 ##################################################################################################################################3
 
 
-def build_master_table(dir_in, version = 'rand', rand_rows = 100, repeat = True, year_month = '201801', save = False, dir_out = None):
+def build_master_table(dir_in, split_date = False, version = 'rand', rand_rows = 100, repeat_row = True, year_month = '201801', save = False, dir_out = None):
     """
-    This function creates the master table. The output is a pandas dataframe
+    This function creates the master table. The output is a pandas dataframe with the following columns: Time|Lat|Lon|Chl|O2|NO3|PO4. If split_date is set to True, instead of the column Time, the columns Year|Month|Day are used.
     Inputs required:
         dir_in: folder where the datasets in .nc format are
+        split_date (Default False). Boolean. If set to False a date column with format YYYYMMDD is created. If set to True, 3 columns are created instead (YYYY, MM and DD) 
         version: 'rand' (default), 'yearmonth' or 'all':
-            -'rand'. Generates the table with a random number of lan-lon-time measurements. Arguments rand_rows and repeat must be also specified
+            -'rand'. Generates the table with a random number of lan-lon-time measurements. Arguments rand_rows and repeat_row must be also specified
             -'yearmonth'. Generates the table using only the specified year, yearmonth or yearmonthday and all the locations. Argument year_month must be also specified
             -'all'. Generates the table using all the timesteps and all the locations.
         rand_rows (Default 100). Int.  When 'rand' is selected, rand_rows is the number of random lan-lon-time measurements used to build the table
-        repeat (Default True). Boolean. When 'rand' is selected, this value specifies if repeated lan-lon-time measurements are allowed in the table. Set to False to not allow repeated rows
+        repeat_row (Default True). Boolean. When 'rand' is selected, this value specifies if repeated lan-lon-time measurements are allowed in the table. Set to False to not allow repeated rows
         year_month (Default '201801'). String. When 'yearmonth' is selected, this value specifies which year, yearmonth or yearmonthday will be used to huild the table. Examples: '2010', '201008', '20100824'
         save (Default False). Boolean. Indicates if the generated table will be saved locally. The generate table is saved in .csv format with '|' as separators
         dir_out. Needed when save is selected. Folder where the table will be saved locally.
@@ -83,7 +85,7 @@ def build_master_table(dir_in, version = 'rand', rand_rows = 100, repeat = True,
         chosen = ['0']
         for i in range(rand_rows):
             coordinate_time_ix = '0'
-            if repeat == False:
+            if repeat_row == False:
                 count = 0
                 while coordinate_time_ix in chosen:
                     count += 1
@@ -102,12 +104,8 @@ def build_master_table(dir_in, version = 'rand', rand_rows = 100, repeat = True,
             dictionary_data = {'Time' : times[time_ix], 'Lat' : latitudes[pairs[coordinate_ix][0]], 'Lon' : longitudes[pairs[coordinate_ix][1]], 'Chl' : dataset_chl['chl'][time_ix,0,pairs[coordinate_ix][0],pairs[coordinate_ix][1]], 'O2' : dataset_o2['o2'][time_ix,0,pairs[coordinate_ix][0],pairs[coordinate_ix][1]], 'NO3' : dataset_no3['no3'][time_ix,0,pairs[coordinate_ix][0],pairs[coordinate_ix][1]], 'PO4' : dataset_po4['po4'][time_ix,0,pairs[coordinate_ix][0],pairs[coordinate_ix][1]]}
             dictionary_list.append(dictionary_data)
         
-        # Convert to pandas dataframe
-        my_df = pd.DataFrame.from_dict(dictionary_list)
-         
-        # Save dataframe locally
-        if save == True:
-            my_df.to_csv(dir_out + '\\table_rand{}.csv'.format(rand_rows), index=False, sep='|')
+        # Name of table for saving purposes
+        text = "rand" + str(rand_rows)
 
     # Version = yearmonth
     elif version == 'yearmonth':
@@ -131,12 +129,8 @@ def build_master_table(dir_in, version = 'rand', rand_rows = 100, repeat = True,
                 dictionary_data = {'Time' : times[i] , 'Lat' : latitudes[j[0]], 'Lon' : longitudes[j[1]], 'Chl' : dataset_chl['chl'][i,0,j[0],j[1]]}
                 dictionary_list.append(dictionary_data)
         
-        # Convert to pandas dataframe
-        my_df = pd.DataFrame.from_dict(dictionary_list)
-        
-        # Save dataframe locally
-        if save == True:
-            my_df.to_csv(dir_out + '\\table_{}.csv'.format(year_month), index=False, sep='|')
+        # Name of table for saving purposes
+        text = str(year_month)
             
     # Version = all       
     elif version == 'all':
@@ -155,14 +149,23 @@ def build_master_table(dir_in, version = 'rand', rand_rows = 100, repeat = True,
                 dictionary_data = {'Time' : times[i] , 'Lat' : latitudes[j[0]], 'Lon' : longitudes[j[1]], 'Chl' : dataset_chl['chl'][i,0,j[0],j[1]]}
                 dictionary_list.append(dictionary_data)
         
-        # Convert to pandas dataframe
-        my_df = pd.DataFrame.from_dict(dictionary_list)
-        
-        # Save dataframe locally
-        if save == True:
-            my_df.to_csv(dir_out + '\\table_all.csv', index=False, sep='|')
+        # Name of table for saving purposes
+        text = 'all'
+
     else:
         return
+    
+    # Convert to pandas dataframe
+    my_df = pd.DataFrame.from_dict(dictionary_list)
+    
+    if split_date:
+        my_df['Year'] = my_df.apply(lambda row: row['Time'][0:4], axis=1)
+        my_df['Month'] = my_df.apply(lambda row: row['Time'][4:6], axis=1)
+        my_df['Day'] = my_df.apply(lambda row: row['Time'][6:8], axis=1)
+        del my_df['Time']
+    
+    if save == True:
+        my_df.to_csv(dir_out + '\\table_{}.csv'.format(text), index=False, sep='|')
     
     dataset_chl.close()
     dataset_o2.close()
@@ -172,4 +175,4 @@ def build_master_table(dir_in, version = 'rand', rand_rows = 100, repeat = True,
     return my_df
 
 
-table = build_master_table(dir_in = dir_in, version = version, rand_rows = rand_rows, repeat = repeat, year_month = year_month, save = save, dir_out = dir_out)
+table = build_master_table(dir_in = dir_in, split_date = split_date, version = version, rand_rows = rand_rows, repeat_row = repeat_row, year_month = year_month, save = save, dir_out = dir_out)
